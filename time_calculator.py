@@ -33,8 +33,8 @@ class TimeCalculator(object):
         self.model = model
         self.max_days = max_days
         self.max_hours = max_days * 24
-        # self.lowest_SOC = lowest_SOC
-        # self.cur_soc = None
+        self.lowest_SOC = lowest_SOC
+        self.cur_soc = None
 
     def get_soc_change(self, input_data):
         # 对输入数据进行归一化，对预测结果恢复原始值
