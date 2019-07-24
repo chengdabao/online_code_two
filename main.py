@@ -82,11 +82,11 @@ class Communicate(object):
         self.p = Producer(PRODUCER_SETTINGS)
         self.c.subscribe(REQUEST_TOPICS)
         # 加载模型
-        train_scaler = joblib.load("./model_parameter/scaler_train")
-        target_scaler = joblib.load("./model_parameter/scaler_test")
-        origin_model = load_model(MODEL_PARAMS)
-        self.model_one = TimeCalculator(train_scaler, target_scaler, origin_model, max_days=MAXDAYS_YELLOW, lowest_SOC=LOWESTSOC_YELLOW)
-        self.model_two = TimeCalculator(train_scaler, target_scaler, origin_model, max_days=MAXDAYS_RED, lowest_SOC=LOWESTSOC_RED)
+        self.train_scaler = joblib.load("./model_parameter/scaler_train")
+        self.target_scaler = joblib.load("./model_parameter/scaler_test")
+        self.origin_model = load_model(MODEL_PARAMS)
+        # self.model_one = TimeCalculator(train_scaler, target_scaler, origin_model)
+        # self.model_two = TimeCalculator(train_scaler, target_scaler, origin_model)
 
     def communicate(self):
         try:
@@ -101,9 +101,16 @@ class Communicate(object):
                                     "topic: %s | offset: %d | partition: %d" %
                                     (request.topic(), request.offset(), request.partition()))
                         receive_data = check_transform(request.value())
+                        
+                        model_yellow = TimeCalculator(
+                            self.train_scaler, self.target_scaler, self.origin_model,
+                            int(receive_data["MAXDAYS_YELLOW"]), int(receive_data["LOWESTSOC_YELLOW"]))
+                        model_red = TimeCalculator(
+                            self.train_scaler, self.target_scaler, self.origin_model,
+                            int(receive_data["MAXDAYS_RED"]), int(receive_data["LOWESTSOC_RED"]))
 
                         ############# model_predict##############
-                        response_data = Predict(receive_data, self.model_one, self.model_two).model_predict()
+                        response_data = Predict(receive_data, model_yellow, model_red).model_predict()
                         #########################################
 
                         self.p.produce(
@@ -128,7 +135,7 @@ class Communicate(object):
                     logger.exception(
                         '**********Error occured: {0}.**********'.format(request.error().str()))
 
-        # 手动停止consumer监听kafka
+        # 手动停止consumer监听
         except KeyboardInterrupt as e:
             logger.info("**********Keyboard Interrupt.**********")
         # 将kafka未知异常保存到日志
